@@ -129,6 +129,7 @@ const askFo = (s: Shop, k: Kind) => {
   const when = t === 'closed' ? "they're closed today" : st.open ? `they're open now (${t} today)` : `they're closed right now (${t} today)`;
   return `hey fo, i found ${s.name} on the line city map. ${KINDS[k].ask(s.name)}\n\nit's at ${s.address}, seattle. ${when}.\n${s.maps}`;
 };
+const reviewsFo = (s: Shop, k: Kind) => `hey fo, i found ${s.name} on the line city map. can you check the reviews for ${s.name} and tell me if it's worth it for [${KINDS[k].label}]? what do people love, what do they complain about, and is it [busy / pricey]?\n\nit's at ${s.address}, seattle, rated ${s.rating} from ${s.reviews.toLocaleString()} reviews.\n${s.maps}`;
 const smsLink = (body: string) => `sms:${FO_NUMBER}?&body=${encodeURIComponent(body)}`;
 // nothing picked = everything shows; picking a kind shows only the picked ones
 const selected = new Set<Kind>();
@@ -328,7 +329,7 @@ function updateHover(x: number, y: number, touch: boolean, pin = false) {
       (pinnedNow
         ? `<a class="fo" href="${smsLink(askFo(s, k))}">have fo ${KINDS[k].does} \u2192</a>` +
           `<div class="sub new">no fo yet? <a href="${SIGNUP_URL}" target="_blank" rel="noopener">get fo</a> first, it only answers its own people</div>` +
-          `<a href="${s.maps}" target="_blank" rel="noopener">google maps \u2197</a>`
+          `<a href="${smsLink(reviewsFo(s, k))}">check reviews with fo \u2192</a>`
         : `<div class="sub hint">${touch ? 'tap' : 'click'} for fo + maps</div>`), x, y);
   } else if (p?.landmark) {
     showTip(`<div class="name">${esc(p.landmark.title)}</div><div class="sub">${esc(p.landmark.note)}</div>`, x, y);
