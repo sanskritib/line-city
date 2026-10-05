@@ -90,7 +90,7 @@ const COUNTS = SHOPS.reduce((m, s) => ((m[kindOf(s)] = (m[kindOf(s)] ?? 0) + 1),
 
 // phones get thumb-sized badges and a little tap slop
 const COARSE = window.matchMedia('(pointer: coarse)').matches;
-const BADGE_PX = COARSE ? 38 : 24;
+const BADGE_PX = COARSE ? 34 : 22;
 const worldPerPx = () => (camera.top - camera.bottom) / (camera.zoom * window.innerHeight);
 // the best-loved spots get their name shown next to the badge
 const POPULAR = [...SHOPS].filter((s) => s.rating >= 4.5 && s.reviews >= 300).sort((a, b) => b.rating * Math.log10(b.reviews) - a.rating * Math.log10(a.reviews));
@@ -105,13 +105,13 @@ function badge(k: Kind, open: boolean) {
   const g = c.getContext('2d')!;
   g.beginPath(); g.arc(64, 64, 55, 0, Math.PI * 2);
   g.fillStyle = open ? color : PAPER_HEX; g.fill();
-  g.lineWidth = 7; g.strokeStyle = open ? INK : color; g.stroke();
+  g.lineWidth = 5.6; g.strokeStyle = open ? INK : color; g.stroke();
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
   const img = new Image();
   img.onload = () => { g.drawImage(img, 28, 28, 72, 72); t.needsUpdate = true; };
-  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg(KINDS[k].icon, open ? PAPER_HEX : color, 72, 2.3));
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg(KINDS[k].icon, open ? PAPER_HEX : color, 72, 1.85));
   return t;
 }
 const TEX = {} as Record<string, THREE.CanvasTexture>;
