@@ -88,6 +88,14 @@ const groupOf = (k: Kind) => GROUPS.find((g) => g.kinds.includes(k))!;
 const kindOf = (s: { kind?: Kind }) => (s.kind ?? 'coffee') as Kind;
 const COUNTS = SHOPS.reduce((m, s) => ((m[kindOf(s)] = (m[kindOf(s)] ?? 0) + 1), m), {} as Partial<Record<Kind, number>>);
 
+// phones get thumb-sized badges and a little tap slop
+const COARSE = window.matchMedia('(pointer: coarse)').matches;
+const BADGE_PX = COARSE ? 38 : 24;
+const worldPerPx = () => (camera.top - camera.bottom) / (camera.zoom * window.innerHeight);
+// the best-loved spots get their name shown next to the badge
+const POPULAR = [...SHOPS].filter((s) => s.rating >= 4.5 && s.reviews >= 300).sort((a, b) => b.rating * Math.log10(b.reviews) - a.rating * Math.log10(a.reviews));
+const LABEL_MAX = COARSE ? 6 : 10;
+
 // ---- marker badges: category color, lucide glyph, filled when open ----
 const INK = '#1d1b19', PAPER_HEX = '#f3eee4';
 function badge(k: Kind, open: boolean) {
@@ -216,6 +224,50 @@ document.getElementById('askclose')!.addEventListener('click', () => { panel.sty
 (document.getElementById('asksignup') as HTMLAnchorElement).href = SIGNUP_URL;
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTip(); else if (e.key.toLowerCase() === 'r') redraw(); });
 
+// ---- name tags on popular spots ----
+const labelLayer = document.createElement('div');
+labelLayer.id = 'labels';
+document.body.appendChild(labelLayer);
+const LABELS = new Map<Shop, HTMLDivElement>();
+for (const shop of POPULAR) {
+  const el = document.createElement('div');
+  el.className = 'lbl';
+  el.textContent = shop.name;
+  el.style.setProperty('--c', groupOf(kindOf(shop)).color);
+  el.addEventListener('click', () => {
+    const mk = city.markers.find((m) => m.shop === shop);
+    if (!mk) return;
+    const { x, y } = toScreen(mk.sprite);
+    updateHover(x, y, COARSE, true);
+  });
+  labelLayer.appendChild(el);
+  LABELS.set(shop, el);
+}
+const tmpV = new THREE.Vector3();
+function toScreen(o: THREE.Object3D) {
+  o.getWorldPosition(tmpV).project(camera);
+  return { x: (tmpV.x + 1) / 2 * window.innerWidth, y: (1 - tmpV.y) / 2 * window.innerHeight, front: tmpV.z < 1 };
+}
+function placeLabels(alive: boolean) {
+  const taken: { l: number; t: number; r: number; b: number }[] = [];
+  const half = BADGE_PX / 2;
+  let n = 0;
+  for (const shop of POPULAR) {
+    const el = LABELS.get(shop)!;
+    const mk = city?.markers.find((m) => m.shop === shop);
+    if (!alive || !mk || !mk.sprite.visible || n >= LABEL_MAX) { el.style.display = 'none'; continue; }
+    const { x, y } = toScreen(mk.sprite);
+    if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) { el.style.display = 'none'; continue; }
+    el.style.display = 'block';
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const box = { l: x - half - 2, t: y - h / 2 - 2, r: x + half + 4 + w + 2, b: y + h / 2 + 2 };
+    if (taken.some((o) => box.l < o.r && box.r > o.l && box.t < o.b && box.b > o.t)) { el.style.display = 'none'; continue; }
+    taken.push(box);
+    el.style.transform = `translate(${Math.round(x + half + 4)}px, ${Math.round(y - h / 2)}px)`;
+    n++;
+  }
+}
+
 // ---- hover / tap ----
 const tip = document.getElementById('tip')!;
 const raycaster = new THREE.Raycaster();
@@ -231,6 +283,15 @@ function pick(clientX: number, clientY: number) {
   const sprites = city.markers.filter((m) => m.sprite.visible).map((m) => m.sprite);
   const hit = raycaster.intersectObjects(sprites, false)[0];
   if (hit) return { marker: city.markers.find((m) => m.sprite === hit.object)!, landmark: null };
+  if (COARSE) {
+    let best: (typeof city.markers)[number] | null = null, bd = BADGE_PX * 0.9;
+    for (const m of city.markers) {
+      if (!m.sprite.visible) continue;
+      const q = toScreen(m.sprite), d = Math.hypot(q.x - clientX, q.y - clientY);
+      if (d < bd) { bd = d; best = m; }
+    }
+    if (best) return { marker: best, landmark: null };
+  }
   const lm = raycaster.intersectObjects(city.landmarkHits.map((h) => h.object), false)[0];
   if (lm && performance.now() - t0 > city.drawTime * 700) return { marker: null, landmark: city.landmarkHits.find((h) => h.object === lm.object)! };
   return null;
@@ -301,7 +362,7 @@ function tick() {
   city.ink.uniforms.uTime.value = t;
   const alive = t > city.drawTime * 0.55;
 
-  const size = 3.2 / camera.zoom;
+  const size = BADGE_PX * worldPerPx();
   for (const mk of city.markers) {
     mk.sprite.visible = mk.pin.visible = alive && isShown(kindOf(mk.shop));
     const k = mk === hovered ? 1.4 : 1;
@@ -328,6 +389,7 @@ function tick() {
 
   controls.update();
   renderer.render(scene, camera);
+  placeLabels(alive);
   requestAnimationFrame(tick);
 }
 tick();
