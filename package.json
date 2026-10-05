@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "lucide": "^1.52.0",
+    "posthog-js": "^1.436.1",
     "three": "^0.170.0"
   },
   "devDependencies": {

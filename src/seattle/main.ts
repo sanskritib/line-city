@@ -5,6 +5,26 @@ import { statusOf } from './hours';
 import { Coffee, UtensilsCrossed, Utensils, HeartPulse, Smile, PersonStanding, Sparkles, Scissors, Hand, HandHeart, Wrench, Shirt, Footprints, Gift, Flower2, Menu, X } from 'lucide';
 import type { Kind, Shop } from './data';
 import { SHOPS } from './data';
+import posthog from 'posthog-js';
+
+// ---- analytics (posthog) ----
+posthog.init('phc_pAT4St6vcS6DTawtHpwexnvWaiKN7aqb7PtbSjUro2Tv', {
+  api_host: 'https://us.i.posthog.com',
+  person_profiles: 'identified_only',
+  capture_pageview: true,
+  capture_pageleave: true,
+});
+posthog.register({ app: 'line-city', city: 'seattle' });
+const track = (ev: string, props: Record<string, unknown> = {}, beacon = false) => {
+  try { posthog.capture(ev, props, beacon ? { transport: 'sendBeacon' } : undefined); } catch { /* never break the map */ }
+};
+// any link or button with data-ev reports itself; links that leave the page use a beacon so the event survives
+document.addEventListener('click', (e) => {
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-ev]');
+  if (!el) return;
+  const { ev, ...rest } = el.dataset;
+  track(ev!, rest, el.tagName === 'A');
+}, true);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -163,7 +183,7 @@ function refreshStatus() {
 }
 redraw();
 setInterval(refreshStatus, 30_000);
-document.getElementById('redraw')!.addEventListener('click', redraw);
+document.getElementById('redraw')!.addEventListener('click', () => { track('redraw_tapped'); redraw(); });
 // ---- side nav: everything fo can do on this map ----
 const navEl = document.getElementById('nav')!;
 function renderNav() {
@@ -202,12 +222,13 @@ navEl.addEventListener('click', (e) => {
     ks.forEach((k) => (allIn ? selected.delete(k) : selected.add(k)));
   } else return;
   applyFilter();
+  track('filter_changed', { tapped: kb ? kb.dataset.k : gb!.dataset.g, level: kb ? 'kind' : 'group', selected: [...selected], selected_count: selected.size });
 });
 renderNav();
 navReady = true;
-document.getElementById('showall')!.addEventListener('click', resetFilter);
+document.getElementById('showall')!.addEventListener('click', () => { track('show_all_tapped', { had_selected: selected.size }); resetFilter(); });
 const morePanel = document.getElementById('morecities')!;
-document.getElementById('more')!.addEventListener('click', () => { morePanel.style.display = morePanel.style.display === 'block' ? 'none' : 'block'; });
+document.getElementById('more')!.addEventListener('click', () => { if (morePanel.style.display !== 'block') track('more_cities_tapped'); morePanel.style.display = morePanel.style.display === 'block' ? 'none' : 'block'; });
 const side = document.getElementById('side')!;
 const toggle = document.getElementById('toggle')!;
 function setCollapsed(c: boolean) {
@@ -219,10 +240,12 @@ setCollapsed(window.innerWidth < 720);
 toggle.addEventListener('click', () => setCollapsed(!side.classList.contains('collapsed')));
 // ask-fo panel
 const panel = document.getElementById('askpanel')!;
-document.getElementById('ask')!.addEventListener('click', () => { panel.style.display = panel.style.display === 'block' ? 'none' : 'block'; });
+document.getElementById('ask')!.addEventListener('click', () => { if (panel.style.display !== 'block') track('ask_fo_opened'); panel.style.display = panel.style.display === 'block' ? 'none' : 'block'; });
 document.getElementById('askclose')!.addEventListener('click', () => { panel.style.display = 'none'; });
 (document.getElementById('asktext') as HTMLAnchorElement).href = smsLink('hey fo, can you find me a quiet cafe near pike place with outlets and check they have a free table?');
 (document.getElementById('asksignup') as HTMLAnchorElement).href = SIGNUP_URL;
+Object.assign(document.getElementById('asktext')!.dataset, { ev: 'ask_fo_text_tapped' });
+Object.assign(document.getElementById('asksignup')!.dataset, { ev: 'get_fo_tapped', source: 'ask_panel' });
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTip(); else if (e.key.toLowerCase() === 'r') redraw(); });
 
 // ---- name tags on popular spots ----
@@ -327,14 +350,18 @@ function updateHover(x: number, y: number, touch: boolean, pin = false) {
       `<div class="sub">today ${esc(st.today.toLowerCase())}</div>` +
       `<div class="sub">${esc(s.address)} \u00b7 \u2605 ${s.rating} (${s.reviews.toLocaleString()})</div>` +
       (pinnedNow
-        ? `<a class="fo" href="${smsLink(askFo(s, k))}">have fo ${KINDS[k].does} \u2192</a>` +
-          `<div class="sub new">no fo yet? <a href="${SIGNUP_URL}" target="_blank" rel="noopener">get fo</a> first, it only answers its own people</div>` +
-          `<a href="${smsLink(reviewsFo(s, k))}">check reviews with fo \u2192</a>`
+        ? `<a class="fo" data-ev="fo_action_tapped" data-place="${esc(s.name)}" data-kind="${k}" data-group="${g.id}" data-open="${st.open}" href="${smsLink(askFo(s, k))}">have fo ${KINDS[k].does} \u2192</a>` +
+          `<div class="sub new">no fo yet? <a data-ev="get_fo_tapped" data-source="place_card" data-place="${esc(s.name)}" data-kind="${k}" href="${SIGNUP_URL}" target="_blank" rel="noopener">get fo</a> first, it only answers its own people</div>` +
+          `<a data-ev="reviews_with_fo_tapped" data-place="${esc(s.name)}" data-kind="${k}" data-group="${g.id}" href="${smsLink(reviewsFo(s, k))}">check reviews with fo \u2192</a>`
         : `<div class="sub hint">${touch ? 'tap' : 'click'} for what fo can do</div>`), x, y);
   } else if (p?.landmark) {
     showTip(`<div class="name">${esc(p.landmark.title)}</div><div class="sub">${esc(p.landmark.note)}</div>`, x, y);
   } else tip.style.display = 'none';
   pinned = pin && !!p?.marker;
+  if (pin && p?.marker) {
+    const s = p.marker.shop, k = kindOf(s);
+    track('place_opened', { place: s.name, kind: k, group: groupOf(k).id, open_now: statusOf(s.hours).open, rating: s.rating, reviews: s.reviews, popular: POPULAR.includes(s), input: touch ? 'touch' : 'mouse' });
+  } else if (pin && p?.landmark) track('landmark_opened', { landmark: p.landmark.title });
 }
 
 renderer.domElement.addEventListener('pointermove', (e) => {
