@@ -54,11 +54,19 @@ function svg(node: IconNode, color: string, size = 24, sw = 2) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${kids}</svg>`;
 }
 
+// breakfast, lunch or dinner, going by the clock on the viewer's own device
+function mealNow() { const h = new Date().getHours(); return h < 11 ? 'breakfast' : h < 16 ? 'lunch' : 'dinner'; }
+
 interface KindInfo { label: string; icon: IconNode; does: string; ask: (n: string, a: string) => string }
 interface Group { id: string; label: string; color: string; icon: IconNode; kinds: Kind[] }
 const KINDS: Record<Kind, KindInfo> = {
   coffee: { label: 'coffee', icon: Coffee as IconNode, does: 'check for a seat', ask: (n, a) => `hey fo, can you call ${n} (${a}, seattle) and check if they have seating right now?` },
-  dinner: { label: 'dinner', icon: UtensilsCrossed as IconNode, does: 'book a table', ask: (n, a) => `hey fo, can you book me a table at ${n} (${a}, seattle)? party of 2, tonight around 7` },
+  dinner: {
+    get label() { return mealNow(); },
+    icon: UtensilsCrossed as IconNode,
+    get does() { return `book a table for ${mealNow()}`; },
+    ask: (n, a) => `hey fo, can you book me a table for ${mealNow()} at ${n} (${a}, seattle) today? party of 2`,
+  },
   bakery: { label: 'cakes', icon: Utensils as IconNode, does: 'order a cake', ask: (n, a) => `hey fo, can you order a custom cake from ${n} (${a}, seattle) for this weekend?` },
   dentist: { label: 'dentists', icon: Smile as IconNode, does: 'book a cleaning', ask: (n, a) => `hey fo, can you call ${n} (${a}, seattle) and book me a cleaning? check they take my insurance first` },
   pt: { label: 'physical therapy', icon: PersonStanding as IconNode, does: 'book a first visit', ask: (n, a) => `hey fo, can you book me a first physical therapy visit at ${n} (${a}, seattle)? check they take my insurance first` },
@@ -108,7 +116,9 @@ const closedTex = TEX.coffee0;
 const FO_NUMBER = '+16283586116';
 const SIGNUP_URL = 'https://wajo.ai'; // swap for a referral link later
 const smsLink = (body: string) => `sms:${FO_NUMBER}?&body=${encodeURIComponent(body)}`;
-const hidden = new Set<Kind>();
+// nothing picked = everything shows; picking a kind shows only the picked ones
+const selected = new Set<Kind>();
+const isShown = (k: Kind) => selected.size === 0 || selected.has(k);
 
 let city: Seattle;
 let t0 = performance.now();
@@ -126,48 +136,61 @@ function refreshStatus() {
   let open = 0, shown = 0;
   for (const mk of city.markers) {
     const s = statusOf(mk.shop.hours);
-    if (!hidden.has(kindOf(mk.shop))) { shown++; if (s.open) open++; }
+    if (isShown(kindOf(mk.shop))) { shown++; if (s.open) open++; }
     const mat = mk.sprite.material as THREE.SpriteMaterial;
     const want = texFor(kindOf(mk.shop), s.open);
     if (mat.map !== want) { mat.map = want; mat.needsUpdate = true; }
   }
   countEl.textContent = `${open} of ${shown} places open right now`;
+  if (mealNow() !== lastMeal) renderNav();
 }
 redraw();
 setInterval(refreshStatus, 30_000);
 document.getElementById('redraw')!.addEventListener('click', redraw);
 // ---- side nav: everything fo can do on this map ----
 const navEl = document.getElementById('nav')!;
-navEl.innerHTML = GROUPS.map((g) => {
-  const kinds = g.kinds.filter((k) => COUNTS[k]);
-  if (!kinds.length) return '';
-  const total = kinds.reduce((n, k) => n + (COUNTS[k] ?? 0), 0);
-  return `<div class="grp" style="--c:${g.color}">` +
-    `<button class="ghead" data-g="${g.id}"><span class="gic">${svg(g.icon, '#f3eee4', 16, 2.2)}</span><b>${g.label}</b><span class="n">${total}</span></button>` +
-    kinds.map((k) => `<button class="kind" data-k="${k}"><span class="kic">${svg(KINDS[k].icon, g.color, 15, 2.2)}</span><span class="kl">${KINDS[k].label}<em>fo can ${KINDS[k].does}</em></span><span class="n">${COUNTS[k]}</span></button>`).join('') +
-    `</div>`;
-}).join('');
-function syncNav() {
-  navEl.querySelectorAll<HTMLButtonElement>('.kind').forEach((b) => b.classList.toggle('off', hidden.has(b.dataset.k as Kind)));
-  navEl.querySelectorAll<HTMLButtonElement>('.ghead').forEach((b) => {
-    const g = GROUPS.find((x) => x.id === b.dataset.g)!;
-    b.classList.toggle('off', g.kinds.filter((k) => COUNTS[k]).every((k) => hidden.has(k)));
-  });
-  closeTip();
-  refreshStatus();
+let lastMeal = '';
+function renderNav() {
+  lastMeal = mealNow();
+  navEl.innerHTML = GROUPS.map((g) => {
+    const kinds = g.kinds.filter((k) => COUNTS[k]);
+    if (!kinds.length) return '';
+    const total = kinds.reduce((n, k) => n + (COUNTS[k] ?? 0), 0);
+    return `<div class="grp" style="--c:${g.color}">` +
+      `<button class="ghead" data-g="${g.id}"><span class="gic">${svg(g.icon, '#f3eee4', 16, 2.2)}</span><b>${g.label}</b><span class="n">${total}</span></button>` +
+      kinds.map((k) => `<button class="kind" data-k="${k}"><span class="kic">${svg(KINDS[k].icon, g.color, 15, 2.2)}</span><span class="kl">${KINDS[k].label}<em>fo can ${KINDS[k].does}</em></span><span class="n">${COUNTS[k]}</span></button>`).join('') +
+      `</div>`;
+  }).join('');
+  paintNav();
 }
+function paintNav() {
+  const picking = selected.size > 0;
+  navEl.classList.toggle('picking', picking);
+  navEl.querySelectorAll<HTMLButtonElement>('.kind').forEach((b) => b.classList.toggle('on', picking && selected.has(b.dataset.k as Kind)));
+  navEl.querySelectorAll<HTMLButtonElement>('.ghead').forEach((b) => {
+    const ks = GROUPS.find((x) => x.id === b.dataset.g)!.kinds.filter((k) => COUNTS[k]);
+    b.classList.toggle('on', picking && ks.some((k) => selected.has(k)));
+  });
+}
+function applyFilter() { paintNav(); closeTip(); if (city) refreshStatus(); }
+function resetFilter() { if (selected.size) { selected.clear(); applyFilter(); } }
 navEl.addEventListener('click', (e) => {
   const kb = (e.target as HTMLElement).closest<HTMLButtonElement>('.kind');
   const gb = (e.target as HTMLElement).closest<HTMLButtonElement>('.ghead');
-  if (kb) { const k = kb.dataset.k as Kind; if (hidden.has(k)) hidden.delete(k); else hidden.add(k); }
-  else if (gb) {
+  if (kb) {
+    const k = kb.dataset.k as Kind;
+    if (selected.has(k)) selected.delete(k); else selected.add(k);
+  } else if (gb) {
     const ks = GROUPS.find((x) => x.id === gb.dataset.g)!.kinds.filter((k) => COUNTS[k]);
-    const allOn = ks.every((k) => !hidden.has(k));
-    ks.forEach((k) => (allOn ? hidden.add(k) : hidden.delete(k)));
+    const allIn = ks.every((k) => selected.has(k));
+    ks.forEach((k) => (allIn ? selected.delete(k) : selected.add(k)));
   } else return;
-  syncNav();
+  applyFilter();
 });
-document.getElementById('showall')!.addEventListener('click', () => { hidden.clear(); syncNav(); });
+renderNav();
+document.getElementById('showall')!.addEventListener('click', resetFilter);
+const morePanel = document.getElementById('morecities')!;
+document.getElementById('more')!.addEventListener('click', () => { morePanel.style.display = morePanel.style.display === 'block' ? 'none' : 'block'; });
 const side = document.getElementById('side')!;
 const toggle = document.getElementById('toggle')!;
 function setCollapsed(c: boolean) {
@@ -258,8 +281,8 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   if (moved) return;
   const p = pick(e.clientX, e.clientY);
   if (p?.marker) updateHover(e.clientX, e.clientY, e.pointerType !== 'mouse', true);
-  else if (pinned) { closeTip(); if (e.pointerType === 'mouse') updateHover(e.clientX, e.clientY, false); }
-  else if (e.pointerType !== 'mouse') updateHover(e.clientX, e.clientY, true);
+  else if (p?.landmark) updateHover(e.clientX, e.clientY, e.pointerType !== 'mouse');
+  else { closeTip(); resetFilter(); }
 });
 
 // ---- loop ----
@@ -272,7 +295,7 @@ function tick() {
 
   const size = 3.2 / camera.zoom;
   for (const mk of city.markers) {
-    mk.sprite.visible = mk.pin.visible = alive && !hidden.has(kindOf(mk.shop));
+    mk.sprite.visible = mk.pin.visible = alive && isShown(kindOf(mk.shop));
     const k = mk === hovered ? 1.4 : 1;
     mk.sprite.scale.set(size * k, size * k, 1);
   }

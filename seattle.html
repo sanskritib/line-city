@@ -2,80 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>line city · seattle</title>
-    <style>
-      html, body { margin: 0; height: 100%; background: #f3eee4; overflow: hidden; }
-      canvas { display: block; touch-action: none; cursor: grab; }
-      #side { position: fixed; left: 14px; top: 14px; bottom: 14px; width: 262px; display: flex; flex-direction: column; background: rgba(243,238,228,0.96); border: 1.5px solid #1d1b19; box-shadow: 3px 3px 0 #1d1b19; font: 12px/1.45 ui-monospace, Menlo, monospace; color: #1d1b19; user-select: none; overflow: hidden; }
-      #side header { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 6px 14px; }
-      #side h1 { font-size: 14px; margin: 0; font-weight: 700; letter-spacing: 0.04em; }
-      #toggle { background: none; border: none; padding: 2px; cursor: pointer; display: flex; }
-      #side .body { overflow-y: auto; padding: 0 12px 12px 14px; flex: 1; }
-      #side .lede { margin: 0 0 10px; opacity: 0.75; }
-      #side.collapsed { bottom: auto; width: auto; }
-      #side.collapsed .body, #side.collapsed h1 { display: none; }
-      #side.collapsed header { padding: 8px; }
-      .grp { margin-bottom: 10px; }
-      .ghead, .kind { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 8px; width: 100%; cursor: pointer; }
-      .ghead { padding: 5px 6px; background: var(--c); color: #f3eee4; }
-      .ghead b { flex: 1; font-size: 12.5px; letter-spacing: 0.05em; }
-      .gic, .kic { display: flex; }
-      .kind { padding: 5px 6px 5px 10px; border-left: 2px solid var(--c); margin-left: 6px; }
-      .kind:hover { background: rgba(29,27,25,0.06); }
-      .kl { flex: 1; } .kl em { display: block; font-style: normal; font-size: 10.5px; opacity: 0.6; }
-      .n { font-size: 11px; opacity: 0.8; }
-      .ghead.off { background: transparent; color: #1d1b19; opacity: 0.5; box-shadow: inset 0 0 0 1.5px var(--c); }
-      .ghead.off .gic svg { stroke: var(--c); }
-      .kind.off { opacity: 0.35; text-decoration: line-through; }
-      #side .legend { margin-top: 4px; padding-top: 8px; border-top: 1px dashed #1d1b19; }
-      #side .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid #1d1b19; vertical-align: -1px; margin-right: 3px; }
-      #side .dot.o { background: #1d1b19; } #side .dot.c { background: #f3eee4; }
-      #side .fine { opacity: 0.6; font-size: 10.5px; margin-top: 4px; }
-      #side .row button, #side .row a { display: inline-block; margin-top: 8px; margin-right: 6px; font: inherit; background: transparent; border: 1px solid #1d1b19; padding: 3px 9px; cursor: pointer; color: inherit; text-decoration: none; }
-      #side .row button:hover, #side .row a:hover { background: #1d1b19; color: #f3eee4; }
-      #tip .pill { display: inline-flex; align-items: center; gap: 4px; color: #f3eee4; font-size: 10.5px; padding: 1px 6px; margin-bottom: 4px; }
-      #tip { position: fixed; display: none; pointer-events: auto; max-width: 260px; background: #f3eee4; border: 1.5px solid #1d1b19; padding: 8px 10px; font: 12px/1.45 ui-monospace, Menlo, monospace; color: #1d1b19; box-shadow: 3px 3px 0 #1d1b19; }
-      #tip .name { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
-      #tip .st.open { color: #b8461f; font-weight: 600; }
-      #tip .st.closed { opacity: 0.7; }
-      #tip .sub { opacity: 0.7; }
-      #tip a { color: #1d1b19; display: inline-block; margin-top: 4px; }
-      #tip a.fo { display: block; margin-top: 8px; background: #1d1b19; color: #f3eee4; text-decoration: none; padding: 6px 9px; font-weight: 600; }
-      #tip a.fo:hover { background: #d9603b; }
-      #tip .new { font-size: 11px; margin-top: 4px; } #tip .new a { margin: 0; }
-      #tip .hint { font-size: 11px; margin-top: 4px; }
-      #ask { position: fixed; right: 18px; top: 18px; font: 600 13px/1.3 ui-monospace, Menlo, monospace; background: #1d1b19; color: #f3eee4; border: 1.5px solid #1d1b19; padding: 9px 13px; cursor: pointer; box-shadow: 3px 3px 0 #d9603b; }
-      #ask:hover { background: #d9603b; box-shadow: 3px 3px 0 #1d1b19; }
-      #askpanel { position: fixed; right: 18px; top: 64px; display: none; width: 270px; background: #f3eee4; border: 1.5px solid #1d1b19; padding: 12px 14px; font: 12px/1.5 ui-monospace, Menlo, monospace; color: #1d1b19; box-shadow: 3px 3px 0 #1d1b19; }
-      #askpanel b { font-size: 13px; } #askpanel .ex { opacity: 0.7; margin: 6px 0; }
-      #askpanel a { display: inline-block; margin: 6px 6px 0 0; padding: 5px 10px; border: 1px solid #1d1b19; color: #1d1b19; text-decoration: none; }
-      #askpanel a.primary { background: #1d1b19; color: #f3eee4; } #askpanel a:hover { background: #d9603b; color: #f3eee4; }
-      #askclose { position: absolute; right: 8px; top: 4px; background: none; border: none; font: inherit; font-size: 15px; cursor: pointer; }
-      #askpanel .fine { opacity: 0.6; font-size: 11px; margin-top: 8px; }
-    </style>
+    <meta http-equiv="refresh" content="0; url=./" />
+    <script>location.replace('./' + location.search + location.hash);</script>
   </head>
-  <body>
-    <aside id="side">
-      <header><h1>line city · seattle</h1><button id="toggle" aria-label="close menu"></button></header>
-      <div class="body">
-        <div class="lede">tap any spot and your fo calls, books or orders it for you. here's everything it can handle on this map</div>
-        <nav id="nav"></nav>
-        <div class="legend"><span class="dot o"></span>open <span class="dot c" style="margin-left:8px"></span>closed · <span id="count"></span></div>
-        <div class="fine">hours from google maps (oct 2026), open/closed worked out live in seattle time</div>
-        <div class="row"><button id="showall">show all</button><button id="redraw">redraw</button><a href="./">line city</a></div>
-        <div class="fine">drag to turn · right-drag to move · scroll to zoom</div>
-      </div>
-    </aside>
-    <div id="tip"></div>
-    <button id="ask">can't find it here? ask fo &rarr;</button>
-    <div id="askpanel">
-      <button id="askclose" aria-label="close">&times;</button>
-      <b>your fo goes past the map</b>
-      <div class="ex">text it what you want and it finds the place, calls them and books it. like "find me a quiet cafe near pike place with outlets and check they have a free table"</div>
-      <a id="asktext" class="primary" href="#">text fo</a><a id="asksignup" href="#" target="_blank" rel="noopener">get fo</a>
-      <div class="fine">fo only answers texts from its own people, so grab fo first if you're new</div>
-    </div>
-    <script type="module" src="/src/seattle/main.ts"></script>
-  </body>
+  <body></body>
 </html>
