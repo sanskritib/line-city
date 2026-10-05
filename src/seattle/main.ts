@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { buildSeattle, Seattle, PAPER, BOUNDS } from './scene';
 import { statusOf } from './hours';
+import { Coffee, UtensilsCrossed, Utensils, HeartPulse, Smile, PersonStanding, Sparkles, Scissors, Hand, HandHeart, Wrench, Shirt, Footprints, Gift, Flower2, Menu, X } from 'lucide';
+import type { Kind } from './data';
+import { SHOPS } from './data';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -43,56 +46,61 @@ controls.addEventListener('change', () => {
   controls.target.y = 0;
 });
 
-// ---- marker icons: a little glyph in a badge, one per kind of place ----
-type Cat = 'coffee' | 'dinner' | 'hair' | 'flowers';
-const CATS: Cat[] = ['coffee', 'dinner', 'hair', 'flowers'];
-function glyph(g: CanvasRenderingContext2D, cat: Cat) {
-  if (cat === 'coffee') {
-    g.beginPath(); g.moveTo(36, 54); g.lineTo(42, 90); g.lineTo(78, 90); g.lineTo(84, 54); g.closePath(); g.stroke();
-    g.beginPath(); g.arc(88, 68, 9, -Math.PI / 2, Math.PI / 2); g.stroke();
-    for (const sx of [50, 62, 74]) { g.beginPath(); g.moveTo(sx, 44); g.quadraticCurveTo(sx - 6, 36, sx, 30); g.quadraticCurveTo(sx + 6, 24, sx, 18); g.stroke(); }
-  } else if (cat === 'dinner') {
-    // fork
-    g.beginPath(); g.moveTo(48, 54); g.lineTo(48, 100); g.stroke();
-    for (const tx of [38, 48, 58]) { g.beginPath(); g.moveTo(tx, 26); g.lineTo(tx, 46); g.stroke(); }
-    g.beginPath(); g.moveTo(38, 46); g.quadraticCurveTo(48, 60, 58, 46); g.stroke();
-    // knife
-    g.beginPath(); g.moveTo(80, 26); g.lineTo(80, 100); g.stroke();
-    g.beginPath(); g.moveTo(80, 26); g.quadraticCurveTo(96, 44, 80, 64); g.stroke();
-  } else if (cat === 'hair') {
-    g.beginPath(); g.arc(46, 86, 11, 0, Math.PI * 2); g.stroke();
-    g.beginPath(); g.arc(82, 86, 11, 0, Math.PI * 2); g.stroke();
-    g.beginPath(); g.moveTo(53, 77); g.lineTo(86, 26); g.stroke();
-    g.beginPath(); g.moveTo(75, 77); g.lineTo(42, 26); g.stroke();
-  } else {
-    for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-      g.beginPath(); g.arc(64 + Math.cos(a) * 15, 48 + Math.sin(a) * 15, 9, 0, Math.PI * 2); g.stroke();
-    }
-    g.beginPath(); g.arc(64, 48, 6, 0, Math.PI * 2); g.stroke();
-    g.beginPath(); g.moveTo(64, 70); g.lineTo(64, 104); g.stroke();
-    g.beginPath(); g.moveTo(64, 92); g.quadraticCurveTo(80, 80, 86, 86); g.quadraticCurveTo(78, 96, 64, 92); g.stroke();
-  }
+// ---- what fo can do here: groups, kinds, lucide icons, colors ----
+
+type IconNode = [string, Record<string, string | number>][];
+function svg(node: IconNode, color: string, size = 24, sw = 2) {
+  const kids = node.map(([tag, attrs]) => `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ')}/>`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${kids}</svg>`;
 }
-function badge(cat: Cat, open: boolean) {
+
+interface KindInfo { label: string; icon: IconNode; does: string; ask: (n: string, a: string) => string }
+interface Group { id: string; label: string; color: string; icon: IconNode; kinds: Kind[] }
+const KINDS: Record<Kind, KindInfo> = {
+  coffee: { label: 'coffee', icon: Coffee as IconNode, does: 'check for a seat', ask: (n, a) => `hey fo, can you call ${n} (${a}, seattle) and check if they have seating right now?` },
+  dinner: { label: 'dinner', icon: UtensilsCrossed as IconNode, does: 'book a table', ask: (n, a) => `hey fo, can you book me a table at ${n} (${a}, seattle)? party of 2, tonight around 7` },
+  bakery: { label: 'cakes', icon: Utensils as IconNode, does: 'order a cake', ask: (n, a) => `hey fo, can you order a custom cake from ${n} (${a}, seattle) for this weekend?` },
+  dentist: { label: 'dentists', icon: Smile as IconNode, does: 'book a cleaning', ask: (n, a) => `hey fo, can you call ${n} (${a}, seattle) and book me a cleaning? check they take my insurance first` },
+  pt: { label: 'physical therapy', icon: PersonStanding as IconNode, does: 'book a first visit', ask: (n, a) => `hey fo, can you book me a first physical therapy visit at ${n} (${a}, seattle)? check they take my insurance first` },
+  hair: { label: 'hair', icon: Scissors as IconNode, does: 'book a cut', ask: (n, a) => `hey fo, can you book me a haircut at ${n} (${a}, seattle) this week?` },
+  nails: { label: 'nails', icon: Hand as IconNode, does: 'book a manicure', ask: (n, a) => `hey fo, can you book me a manicure at ${n} (${a}, seattle) this week?` },
+  massage: { label: 'massage', icon: HandHeart as IconNode, does: 'book a massage', ask: (n, a) => `hey fo, can you book me a 60 minute massage at ${n} (${a}, seattle) this week?` },
+  tailor: { label: 'tailors', icon: Shirt as IconNode, does: 'get a quote', ask: (n, a) => `hey fo, can you call ${n} (${a}, seattle) and ask what hemming a pair of pants costs and how long it takes?` },
+  shoes: { label: 'shoe repair', icon: Footprints as IconNode, does: 'check turnaround', ask: (n, a) => `hey fo, can you call ${n} (${a}, seattle) and ask what a resole costs and how long it takes?` },
+  flowers: { label: 'flowers', icon: Flower2 as IconNode, does: 'send a bouquet', ask: (n, a) => `hey fo, can you order a bouquet from ${n} (${a}, seattle) and get it delivered?` },
+};
+const GROUPS: Group[] = [
+  { id: 'food', label: 'food', color: '#d9603b', icon: Utensils as IconNode, kinds: ['coffee', 'dinner', 'bakery'] },
+  { id: 'health', label: 'health', color: '#2f6fae', icon: HeartPulse as IconNode, kinds: ['dentist', 'pt'] },
+  { id: 'beauty', label: 'beauty', color: '#c0457a', icon: Sparkles as IconNode, kinds: ['hair', 'nails', 'massage'] },
+  { id: 'fixes', label: 'fixes', color: '#4f8a3a', icon: Wrench as IconNode, kinds: ['tailor', 'shoes'] },
+  { id: 'gifts', label: 'gifts', color: '#7b55b8', icon: Gift as IconNode, kinds: ['flowers'] },
+];
+const groupOf = (k: Kind) => GROUPS.find((g) => g.kinds.includes(k))!;
+const kindOf = (s: { kind?: Kind }) => (s.kind ?? 'coffee') as Kind;
+const COUNTS = SHOPS.reduce((m, s) => ((m[kindOf(s)] = (m[kindOf(s)] ?? 0) + 1), m), {} as Partial<Record<Kind, number>>);
+
+// ---- marker badges: category color, lucide glyph, filled when open ----
+const INK = '#1d1b19', PAPER_HEX = '#f3eee4';
+function badge(k: Kind, open: boolean) {
+  const color = groupOf(k).color;
   const c = document.createElement('canvas');
   c.width = c.height = 128;
   const g = c.getContext('2d')!;
-  g.lineWidth = 7; g.lineJoin = 'round'; g.lineCap = 'round';
-  g.beginPath(); g.arc(64, 64, 56, 0, Math.PI * 2);
-  g.fillStyle = open ? '#d9603b' : '#f3eee4'; g.fill();
-  g.strokeStyle = '#1d1b19'; g.stroke();
-  g.strokeStyle = open ? '#f3eee4' : '#1d1b19';
-  g.lineWidth = 6;
-  glyph(g, cat);
-  if (!open) { g.globalAlpha = 0.35; g.fillStyle = '#f3eee4'; g.beginPath(); g.arc(64, 64, 54, 0, Math.PI * 2); g.fill(); }
+  g.beginPath(); g.arc(64, 64, 55, 0, Math.PI * 2);
+  g.fillStyle = open ? color : PAPER_HEX; g.fill();
+  g.lineWidth = 7; g.strokeStyle = open ? INK : color; g.stroke();
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
+  const img = new Image();
+  img.onload = () => { g.drawImage(img, 28, 28, 72, 72); t.needsUpdate = true; };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg(KINDS[k].icon, open ? PAPER_HEX : color, 72, 2.3));
   return t;
 }
-const TEX = Object.fromEntries(CATS.flatMap((k) => [[k + '1', badge(k, true)], [k + '0', badge(k, false)]])) as Record<string, THREE.CanvasTexture>;
-const texFor = (cat: Cat | undefined, open: boolean) => TEX[(cat ?? 'coffee') + (open ? '1' : '0')];
+const TEX = {} as Record<string, THREE.CanvasTexture>;
+for (const k of Object.keys(KINDS) as Kind[]) { TEX[k + '1'] = badge(k, true); TEX[k + '0'] = badge(k, false); }
+const texFor = (k: Kind, open: boolean) => TEX[k + (open ? '1' : '0')];
 const openTex = TEX.coffee1;
 const closedTex = TEX.coffee0;
 
@@ -100,13 +108,7 @@ const closedTex = TEX.coffee0;
 const FO_NUMBER = '+16283586116';
 const SIGNUP_URL = 'https://wajo.ai'; // swap for a referral link later
 const smsLink = (body: string) => `sms:${FO_NUMBER}?&body=${encodeURIComponent(body)}`;
-const ACTION: Record<Cat, { label: string; ask: (n: string, a: string) => string }> = {
-  coffee: { label: 'have fo check for a seat', ask: (n, a) => `hey fo, can you call ${n} (${a}, seattle) and check if they have seating right now?` },
-  dinner: { label: 'have fo book a table', ask: (n, a) => `hey fo, can you book me a table at ${n} (${a}, seattle)? party of 2, tonight around 7` },
-  hair: { label: 'have fo book a cut', ask: (n, a) => `hey fo, can you book me a haircut at ${n} (${a}, seattle) this week?` },
-  flowers: { label: 'have fo send flowers', ask: (n, a) => `hey fo, can you order a bouquet from ${n} (${a}, seattle) and get it delivered?` },
-};
-const hidden = new Set<Cat>();
+const hidden = new Set<Kind>();
 
 let city: Seattle;
 let t0 = performance.now();
@@ -124,9 +126,9 @@ function refreshStatus() {
   let open = 0, shown = 0;
   for (const mk of city.markers) {
     const s = statusOf(mk.shop.hours);
-    if (!hidden.has(mk.shop.cat as Cat)) { shown++; if (s.open) open++; }
+    if (!hidden.has(kindOf(mk.shop))) { shown++; if (s.open) open++; }
     const mat = mk.sprite.material as THREE.SpriteMaterial;
-    const want = texFor(mk.shop.cat as Cat, s.open);
+    const want = texFor(kindOf(mk.shop), s.open);
     if (mat.map !== want) { mat.map = want; mat.needsUpdate = true; }
   }
   countEl.textContent = `${open} of ${shown} places open right now`;
@@ -134,13 +136,47 @@ function refreshStatus() {
 redraw();
 setInterval(refreshStatus, 30_000);
 document.getElementById('redraw')!.addEventListener('click', redraw);
-document.querySelectorAll<HTMLButtonElement>('.chip').forEach((b) => b.addEventListener('click', () => {
-  const k = b.dataset.cat as Cat;
-  if (hidden.has(k)) hidden.delete(k); else hidden.add(k);
-  b.classList.toggle('off', hidden.has(k));
+// ---- side nav: everything fo can do on this map ----
+const navEl = document.getElementById('nav')!;
+navEl.innerHTML = GROUPS.map((g) => {
+  const kinds = g.kinds.filter((k) => COUNTS[k]);
+  if (!kinds.length) return '';
+  const total = kinds.reduce((n, k) => n + (COUNTS[k] ?? 0), 0);
+  return `<div class="grp" style="--c:${g.color}">` +
+    `<button class="ghead" data-g="${g.id}"><span class="gic">${svg(g.icon, '#f3eee4', 16, 2.2)}</span><b>${g.label}</b><span class="n">${total}</span></button>` +
+    kinds.map((k) => `<button class="kind" data-k="${k}"><span class="kic">${svg(KINDS[k].icon, g.color, 15, 2.2)}</span><span class="kl">${KINDS[k].label}<em>fo can ${KINDS[k].does}</em></span><span class="n">${COUNTS[k]}</span></button>`).join('') +
+    `</div>`;
+}).join('');
+function syncNav() {
+  navEl.querySelectorAll<HTMLButtonElement>('.kind').forEach((b) => b.classList.toggle('off', hidden.has(b.dataset.k as Kind)));
+  navEl.querySelectorAll<HTMLButtonElement>('.ghead').forEach((b) => {
+    const g = GROUPS.find((x) => x.id === b.dataset.g)!;
+    b.classList.toggle('off', g.kinds.filter((k) => COUNTS[k]).every((k) => hidden.has(k)));
+  });
   closeTip();
   refreshStatus();
-}));
+}
+navEl.addEventListener('click', (e) => {
+  const kb = (e.target as HTMLElement).closest<HTMLButtonElement>('.kind');
+  const gb = (e.target as HTMLElement).closest<HTMLButtonElement>('.ghead');
+  if (kb) { const k = kb.dataset.k as Kind; if (hidden.has(k)) hidden.delete(k); else hidden.add(k); }
+  else if (gb) {
+    const ks = GROUPS.find((x) => x.id === gb.dataset.g)!.kinds.filter((k) => COUNTS[k]);
+    const allOn = ks.every((k) => !hidden.has(k));
+    ks.forEach((k) => (allOn ? hidden.add(k) : hidden.delete(k)));
+  } else return;
+  syncNav();
+});
+document.getElementById('showall')!.addEventListener('click', () => { hidden.clear(); syncNav(); });
+const side = document.getElementById('side')!;
+const toggle = document.getElementById('toggle')!;
+function setCollapsed(c: boolean) {
+  side.classList.toggle('collapsed', c);
+  toggle.innerHTML = svg((c ? Menu : X) as IconNode, '#1d1b19', 18, 2.2);
+  toggle.setAttribute('aria-label', c ? 'open menu' : 'close menu');
+}
+setCollapsed(window.innerWidth < 720);
+toggle.addEventListener('click', () => setCollapsed(!side.classList.contains('collapsed')));
 // ask-fo panel
 const panel = document.getElementById('askpanel')!;
 document.getElementById('ask')!.addEventListener('click', () => { panel.style.display = panel.style.display === 'block' ? 'none' : 'block'; });
@@ -190,13 +226,15 @@ function updateHover(x: number, y: number, touch: boolean, pin = false) {
   renderer.domElement.style.cursor = hovered ? 'pointer' : 'grab';
   if (p?.marker) {
     const s = p.marker.shop, st = statusOf(s.hours);
+    const k = kindOf(s), g = groupOf(k);
     showTip(
+      `<div class="pill" style="background:${g.color}">${svg(KINDS[k].icon, '#f3eee4', 12, 2.4)}${g.label} \u00b7 ${KINDS[k].label}</div>` +
       `<div class="name">${esc(s.name)}</div>` +
       `<div class="st ${st.open ? 'open' : 'closed'}">${st.line}</div>` +
       `<div class="sub">today ${esc(st.today.toLowerCase())}</div>` +
       `<div class="sub">${esc(s.address)} \u00b7 \u2605 ${s.rating} (${s.reviews.toLocaleString()})</div>` +
       (pinnedNow
-        ? `<a class="fo" href="${smsLink(ACTION[(s.cat ?? 'coffee') as Cat].ask(s.name, s.address))}">${ACTION[(s.cat ?? 'coffee') as Cat].label} \u2192</a>` +
+        ? `<a class="fo" href="${smsLink(KINDS[k].ask(s.name, s.address))}">have fo ${KINDS[k].does} \u2192</a>` +
           `<div class="sub new">no fo yet? <a href="${SIGNUP_URL}" target="_blank" rel="noopener">get fo</a> first, it only answers its own people</div>` +
           `<a href="${s.maps}" target="_blank" rel="noopener">google maps \u2197</a>`
         : `<div class="sub hint">${touch ? 'tap' : 'click'} for fo + maps</div>`), x, y);
@@ -234,7 +272,7 @@ function tick() {
 
   const size = 3.2 / camera.zoom;
   for (const mk of city.markers) {
-    mk.sprite.visible = mk.pin.visible = alive && !hidden.has(mk.shop.cat as Cat);
+    mk.sprite.visible = mk.pin.visible = alive && !hidden.has(kindOf(mk.shop));
     const k = mk === hovered ? 1.4 : 1;
     mk.sprite.scale.set(size * k, size * k, 1);
   }

@@ -2,10 +2,10 @@ import { MORE } from './places';
 
 // Downtown Seattle coffee spots. Hours come from Google Maps listings (pulled Oct 5, 2026).
 // Days run Monday..Sunday. Open/closed is worked out live in Seattle time.
-export type Category = 'coffee' | 'dinner' | 'hair' | 'flowers';
+export type Kind = 'coffee' | 'dinner' | 'bakery' | 'dentist' | 'pt' | 'hair' | 'nails' | 'massage' | 'tailor' | 'shoes' | 'flowers';
 
 export interface Shop {
-  cat?: Category;
+  kind?: Kind;
   name: string;
   address: string;
   lat: number;
@@ -54,7 +54,7 @@ const COFFEE: Shop[] = [
   { name: 'Ghost Alley Espresso', address: '1499 Post Alley', lat: 47.6086076, lng: -122.340581, rating: 4.6, reviews: 766, maps: m + '13415932426937922897', hours: d('7:00 AM - 4:00 PM') },
 ];
 
-export const SHOPS: Shop[] = [...COFFEE.map((s) => ({ ...s, cat: 'coffee' as Category })), ...MORE];
+export const SHOPS: Shop[] = [...COFFEE.map((s) => ({ ...s, kind: 'coffee' as Kind })), ...MORE];
 
 export type LandmarkKind = 'stepped' | 'flare' | 'gable' | 'box' | 'pyramid' | 'needle' | 'wheel' | 'market' | 'notched';
 export interface Landmark { name: string; note: string; lat: number; lng: number; height: number; kind: LandmarkKind; size: number; }
