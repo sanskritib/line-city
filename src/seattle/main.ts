@@ -119,6 +119,8 @@ const smsLink = (body: string) => `sms:${FO_NUMBER}?&body=${encodeURIComponent(b
 // nothing picked = everything shows; picking a kind shows only the picked ones
 const selected = new Set<Kind>();
 const isShown = (k: Kind) => selected.size === 0 || selected.has(k);
+let lastMeal = '';
+let navReady = false;
 
 let city: Seattle;
 let t0 = performance.now();
@@ -142,14 +144,13 @@ function refreshStatus() {
     if (mat.map !== want) { mat.map = want; mat.needsUpdate = true; }
   }
   countEl.textContent = `${open} of ${shown} places open right now`;
-  if (mealNow() !== lastMeal) renderNav();
+  if (navReady && mealNow() !== lastMeal) renderNav();
 }
 redraw();
 setInterval(refreshStatus, 30_000);
 document.getElementById('redraw')!.addEventListener('click', redraw);
 // ---- side nav: everything fo can do on this map ----
 const navEl = document.getElementById('nav')!;
-let lastMeal = '';
 function renderNav() {
   lastMeal = mealNow();
   navEl.innerHTML = GROUPS.map((g) => {
@@ -188,6 +189,7 @@ navEl.addEventListener('click', (e) => {
   applyFilter();
 });
 renderNav();
+navReady = true;
 document.getElementById('showall')!.addEventListener('click', resetFilter);
 const morePanel = document.getElementById('morecities')!;
 document.getElementById('more')!.addEventListener('click', () => { morePanel.style.display = morePanel.style.display === 'block' ? 'none' : 'block'; });
