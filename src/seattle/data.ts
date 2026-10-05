@@ -1,6 +1,11 @@
+import { MORE } from './places';
+
 // Downtown Seattle coffee spots. Hours come from Google Maps listings (pulled Oct 5, 2026).
 // Days run Monday..Sunday. Open/closed is worked out live in Seattle time.
+export type Category = 'coffee' | 'dinner' | 'hair' | 'flowers';
+
 export interface Shop {
+  cat?: Category;
   name: string;
   address: string;
   lat: number;
@@ -14,7 +19,7 @@ export interface Shop {
 const d = (s: string) => Array(7).fill(s);
 const m = 'https://maps.google.com/?cid=';
 
-export const SHOPS: Shop[] = [
+const COFFEE: Shop[] = [
   { name: 'Olympia Coffee Roasting', address: '1420 5th Ave', lat: 47.610384, lng: -122.3352306, rating: 4.4, reviews: 458, maps: m + '14205993247671157088', hours: [...d('6:00 AM - 6:00 PM').slice(0, 5), '7:00 AM - 6:00 PM', '7:00 AM - 6:00 PM'] },
   { name: 'Storyville Coffee Pike Place', address: '94 Pike St, top floor', lat: 47.60895, lng: -122.3404309, rating: 4.6, reviews: 3221, maps: m + '8582500234709843288', hours: [...d('6:59 AM - 5:00 PM').slice(0, 4), ...d('6:59 AM - 6:00 PM').slice(0, 3)] },
   { name: 'Anchorhead Coffee', address: '1600 7th Ave', lat: 47.6134003, lng: -122.3347638, rating: 4.6, reviews: 1965, maps: m + '1654276046964532589', hours: d('7:00 AM - 6:00 PM') },
@@ -48,6 +53,8 @@ export const SHOPS: Shop[] = [
   { name: 'Caffe Vita at Smith Tower', address: '506 2nd Ave', lat: 47.6019888, lng: -122.3317274, rating: 4.2, reviews: 40, maps: m + '12180492991256119205', hours: [...d('7:00 AM - 5:00 PM').slice(0, 5), '8:00 AM - 3:00 PM', '8:00 AM - 3:00 PM'] },
   { name: 'Ghost Alley Espresso', address: '1499 Post Alley', lat: 47.6086076, lng: -122.340581, rating: 4.6, reviews: 766, maps: m + '13415932426937922897', hours: d('7:00 AM - 4:00 PM') },
 ];
+
+export const SHOPS: Shop[] = [...COFFEE.map((s) => ({ ...s, cat: 'coffee' as Category })), ...MORE];
 
 export type LandmarkKind = 'stepped' | 'flare' | 'gable' | 'box' | 'pyramid' | 'needle' | 'wheel' | 'market' | 'notched';
 export interface Landmark { name: string; note: string; lat: number; lng: number; height: number; kind: LandmarkKind; size: number; }
