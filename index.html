@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>line city</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #f3eee4; overflow: hidden; }
+      canvas { display: block; touch-action: none; }
+      .ui { position: fixed; left: 20px; bottom: 18px; font: 13px/1.4 ui-monospace, Menlo, monospace; color: #1d1b19; user-select: none; }
+      .ui h1 { font-size: 15px; margin: 0 0 4px; font-weight: 600; letter-spacing: 0.04em; }
+      .ui button { margin-top: 8px; font: inherit; background: transparent; border: 1px solid #1d1b19; padding: 4px 10px; cursor: pointer; color: inherit; }
+      .ui button:hover { background: #1d1b19; color: #f3eee4; }
+    </style>
+  </head>
+  <body>
+    <div class="ui">
+      <h1>line city</h1>
+      <div>drag to turn · scroll to zoom · R to redraw</div>
+      <button id="redraw">redraw</button>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
