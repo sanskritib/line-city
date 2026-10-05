@@ -330,7 +330,7 @@ function updateHover(x: number, y: number, touch: boolean, pin = false) {
         ? `<a class="fo" href="${smsLink(askFo(s, k))}">have fo ${KINDS[k].does} \u2192</a>` +
           `<div class="sub new">no fo yet? <a href="${SIGNUP_URL}" target="_blank" rel="noopener">get fo</a> first, it only answers its own people</div>` +
           `<a href="${smsLink(reviewsFo(s, k))}">check reviews with fo \u2192</a>`
-        : `<div class="sub hint">${touch ? 'tap' : 'click'} for fo + maps</div>`), x, y);
+        : `<div class="sub hint">${touch ? 'tap' : 'click'} for what fo can do</div>`), x, y);
   } else if (p?.landmark) {
     showTip(`<div class="name">${esc(p.landmark.title)}</div><div class="sub">${esc(p.landmark.note)}</div>`, x, y);
   } else tip.style.display = 'none';
