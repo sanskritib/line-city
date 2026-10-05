@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { buildSeattle, Seattle, PAPER, BOUNDS } from './scene';
 import { statusOf } from './hours';
 import { Coffee, UtensilsCrossed, Utensils, HeartPulse, Smile, PersonStanding, Sparkles, Scissors, Hand, HandHeart, Wrench, Shirt, Footprints, Gift, Flower2, Menu, X } from 'lucide';
-import type { Kind } from './data';
+import type { Kind, Shop } from './data';
 import { SHOPS } from './data';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -57,25 +57,25 @@ function svg(node: IconNode, color: string, size = 24, sw = 2) {
 // breakfast, lunch or dinner, going by the clock on the viewer's own device
 function mealNow() { const h = new Date().getHours(); return h < 11 ? 'breakfast' : h < 16 ? 'lunch' : 'dinner'; }
 
-interface KindInfo { label: string; icon: IconNode; does: string; ask: (n: string, a: string) => string }
+interface KindInfo { label: string; icon: IconNode; does: string; ask: (n: string) => string }
 interface Group { id: string; label: string; color: string; icon: IconNode; kinds: Kind[] }
 const KINDS: Record<Kind, KindInfo> = {
-  coffee: { label: 'coffee', icon: Coffee as IconNode, does: 'check for a seat', ask: (n, a) => `hey fo, can you call ${n} (${a}, seattle) and check if they have seating right now?` },
+  coffee: { label: 'coffee', icon: Coffee as IconNode, does: 'check for a seat', ask: (n) => `can you call ${n} and check if they have a free table for [1] right now? i want to sit and work for [about an hour], so outlets or wifi are a plus` },
   dinner: {
     get label() { return mealNow(); },
     icon: UtensilsCrossed as IconNode,
     get does() { return `book a table for ${mealNow()}`; },
-    ask: (n, a) => `hey fo, can you book me a table for ${mealNow()} at ${n} (${a}, seattle) today? party of 2`,
+    ask: (n) => `can you book me a table for ${mealNow()} at ${n}? party of [2], today around [time]. if that's taken, the closest time either side works`,
   },
-  bakery: { label: 'cakes', icon: Utensils as IconNode, does: 'order a cake', ask: (n, a) => `hey fo, can you order a custom cake from ${n} (${a}, seattle) for this weekend?` },
-  dentist: { label: 'dentists', icon: Smile as IconNode, does: 'book a cleaning', ask: (n, a) => `hey fo, can you call ${n} (${a}, seattle) and book me a cleaning? check they take my insurance first` },
-  pt: { label: 'physical therapy', icon: PersonStanding as IconNode, does: 'book a first visit', ask: (n, a) => `hey fo, can you book me a first physical therapy visit at ${n} (${a}, seattle)? check they take my insurance first` },
-  hair: { label: 'hair', icon: Scissors as IconNode, does: 'book a cut', ask: (n, a) => `hey fo, can you book me a haircut at ${n} (${a}, seattle) this week?` },
-  nails: { label: 'nails', icon: Hand as IconNode, does: 'book a manicure', ask: (n, a) => `hey fo, can you book me a manicure at ${n} (${a}, seattle) this week?` },
-  massage: { label: 'massage', icon: HandHeart as IconNode, does: 'book a massage', ask: (n, a) => `hey fo, can you book me a 60 minute massage at ${n} (${a}, seattle) this week?` },
-  tailor: { label: 'tailors', icon: Shirt as IconNode, does: 'get a quote', ask: (n, a) => `hey fo, can you call ${n} (${a}, seattle) and ask what hemming a pair of pants costs and how long it takes?` },
-  shoes: { label: 'shoe repair', icon: Footprints as IconNode, does: 'check turnaround', ask: (n, a) => `hey fo, can you call ${n} (${a}, seattle) and ask what a resole costs and how long it takes?` },
-  flowers: { label: 'flowers', icon: Flower2 as IconNode, does: 'send a bouquet', ask: (n, a) => `hey fo, can you order a bouquet from ${n} (${a}, seattle) and get it delivered?` },
+  bakery: { label: 'cakes', icon: Utensils as IconNode, does: 'order a cake', ask: (n) => `can you call ${n} and order a custom cake for [date]? [size, flavor, what it should say on top]. ask the price and when i can pick it up` },
+  dentist: { label: 'dentists', icon: Smile as IconNode, does: 'book a cleaning', ask: (n) => `can you call ${n} and book me a cleaning for [this week / next week]? first check they're taking new patients and accept my insurance ([insurance name])` },
+  pt: { label: 'physical therapy', icon: PersonStanding as IconNode, does: 'book a first visit', ask: (n) => `can you book me a first physical therapy visit at ${n} for [what's bothering you]? check they take my insurance ([insurance name]) and whether i need a referral` },
+  hair: { label: 'hair', icon: Scissors as IconNode, does: 'book a cut', ask: (n) => `can you book me a [haircut] at ${n} for [day and time]? ask the price too` },
+  nails: { label: 'nails', icon: Hand as IconNode, does: 'book a manicure', ask: (n) => `can you book me a [gel manicure] at ${n} for [day and time]? ask the price too` },
+  massage: { label: 'massage', icon: HandHeart as IconNode, does: 'book a massage', ask: (n) => `can you book me a 60 minute [deep tissue] massage at ${n} for [day and time]? ask the price first` },
+  tailor: { label: 'tailors', icon: Shirt as IconNode, does: 'get a quote', ask: (n) => `can you call ${n} and ask what [hemming a pair of pants] costs and how soon it'd be ready?` },
+  shoes: { label: 'shoe repair', icon: Footprints as IconNode, does: 'check turnaround', ask: (n) => `can you call ${n} and ask what [resoling a pair of boots] costs and how long it takes?` },
+  flowers: { label: 'flowers', icon: Flower2 as IconNode, does: 'send a bouquet', ask: (n) => `can you order a bouquet from ${n} for delivery to [address] on [date], around [$60]? the card should say [message]` },
 };
 const GROUPS: Group[] = [
   { id: 'food', label: 'food', color: '#d9603b', icon: Utensils as IconNode, kinds: ['coffee', 'dinner', 'bakery'] },
@@ -115,6 +115,12 @@ const closedTex = TEX.coffee0;
 // ---- fo: text it to get things done ----
 const FO_NUMBER = '+16283586116';
 const SIGNUP_URL = 'https://wajo.ai'; // swap for a referral link later
+const askFo = (s: Shop, k: Kind) => {
+  const st = statusOf(s.hours);
+  const t = st.today.toLowerCase();
+  const when = t === 'closed' ? "they're closed today" : st.open ? `they're open now (${t} today)` : `they're closed right now (${t} today)`;
+  return `hey fo, i found ${s.name} on the line city map. ${KINDS[k].ask(s.name)}\n\nit's at ${s.address}, seattle. ${when}.\n${s.maps}`;
+};
 const smsLink = (body: string) => `sms:${FO_NUMBER}?&body=${encodeURIComponent(body)}`;
 // nothing picked = everything shows; picking a kind shows only the picked ones
 const selected = new Set<Kind>();
@@ -259,7 +265,7 @@ function updateHover(x: number, y: number, touch: boolean, pin = false) {
       `<div class="sub">today ${esc(st.today.toLowerCase())}</div>` +
       `<div class="sub">${esc(s.address)} \u00b7 \u2605 ${s.rating} (${s.reviews.toLocaleString()})</div>` +
       (pinnedNow
-        ? `<a class="fo" href="${smsLink(KINDS[k].ask(s.name, s.address))}">have fo ${KINDS[k].does} \u2192</a>` +
+        ? `<a class="fo" href="${smsLink(askFo(s, k))}">have fo ${KINDS[k].does} \u2192</a>` +
           `<div class="sub new">no fo yet? <a href="${SIGNUP_URL}" target="_blank" rel="noopener">get fo</a> first, it only answers its own people</div>` +
           `<a href="${s.maps}" target="_blank" rel="noopener">google maps \u2197</a>`
         : `<div class="sub hint">${touch ? 'tap' : 'click'} for fo + maps</div>`), x, y);
