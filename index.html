@@ -12,6 +12,8 @@
       #side h1 { font-size: 14px; margin: 0; font-weight: 700; letter-spacing: 0.04em; }
       #toggle { background: none; border: none; padding: 2px; cursor: pointer; display: flex; }
       #side .body { overflow-y: auto; padding: 0 12px 12px 14px; flex: 1; }
+      #side .body { scrollbar-width: none; -ms-overflow-style: none; }
+      #side .body::-webkit-scrollbar { display: none; width: 0; height: 0; }
       #side .lede { margin: 0 0 10px; opacity: 0.75; }
       #side.collapsed { bottom: auto; width: auto; }
       #side.collapsed .body, #side.collapsed h1 { display: none; }
