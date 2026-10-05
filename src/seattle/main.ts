@@ -352,7 +352,12 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   const p = pick(e.clientX, e.clientY);
   if (p?.marker) updateHover(e.clientX, e.clientY, e.pointerType !== 'mouse', true);
   else if (p?.landmark) updateHover(e.clientX, e.clientY, e.pointerType !== 'mouse');
-  else { closeTip(); resetFilter(); }
+  else {
+    // phone: first blank tap tucks the nav away and keeps your pick; the next one brings everything back
+    closeTip();
+    if (window.innerWidth < 720 && !side.classList.contains('collapsed')) setCollapsed(true);
+    else resetFilter();
+  }
 });
 
 // ---- loop ----
