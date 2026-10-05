@@ -10,7 +10,8 @@
       .ui { position: fixed; left: 20px; bottom: 18px; font: 13px/1.4 ui-monospace, Menlo, monospace; color: #1d1b19; user-select: none; }
       .ui h1 { font-size: 15px; margin: 0 0 4px; font-weight: 600; letter-spacing: 0.04em; }
       .ui button { margin-top: 8px; font: inherit; background: transparent; border: 1px solid #1d1b19; padding: 4px 10px; cursor: pointer; color: inherit; }
-      .ui button:hover { background: #1d1b19; color: #f3eee4; }
+      .ui button:hover, .ui a.btn:hover { background: #1d1b19; color: #f3eee4; }
+      .ui a.btn { display: inline-block; margin-top: 8px; margin-left: 6px; border: 1px solid #1d1b19; padding: 4px 10px; color: inherit; text-decoration: none; }
     </style>
   </head>
   <body>
@@ -18,6 +19,7 @@
       <h1>line city</h1>
       <div>drag to turn · scroll to zoom · R to redraw</div>
       <button id="redraw">redraw</button>
+      <a class="btn" href="./seattle.html">seattle →</a>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
